@@ -1,0 +1,256 @@
+import os
+import base64
+from tkinter import *
+from tkinter import ttk
+from tkinter import filedialog
+
+##### interfaccia grafica, con tkinter ######
+root_01 = Tk()
+root_01.title('en/de')
+#root_01.iconbitmap()
+root_01.geometry('400x200')
+root_01.resizable(False,False)
+
+##### frame #####
+##### l'interfaccia è composta da 5 frame, due dei quali (ONE e THREE) hanno dei sottoframe per creare due colonne
+##### frame_ONE, all'interno di questo frame ci sono i radiobutton per la scelta di 'en' or 'de' e il tasto per la selezione del file
+##### frame_TWO, all'interno di questo frame compare a display il percorso del file selezionato
+##### frame_THREE, all'interno di questo frame troviamo la parte centrale del programma, sceglieremo la directory di destinazione e se aprire il file decordificato al termine del processo
+##### frame_FIVE, all'interno di questo frame è centrato il tasto d'invio del programma
+frame_ONE = Frame(root_01) 
+frame_TWO = Frame(root_01) 
+frame_THREE = Frame(root_01)
+frame_FOUR = Frame(root_01)
+frame_FIVE = Frame(root_01)
+
+sottoframe_ONE_L = Frame(frame_ONE)
+sottoframe_ONE_R = Frame(frame_ONE)
+sottoframe_THREE_L = Frame(frame_THREE)
+sottoframe_THREE_R = Frame(frame_THREE)
+
+frame_ONE.pack(fill=X,expand=True)
+frame_TWO.pack(fill=X,expand=True)
+frame_THREE.pack(fill=X,expand=True)
+frame_FOUR.pack(fill=X,expand=True)
+frame_FIVE.pack(fill=X,expand=True)
+sottoframe_ONE_L.pack(side=LEFT,fill=BOTH,expand=True)
+sottoframe_ONE_R.pack(side=LEFT,fill=BOTH,expand=True)
+sottoframe_THREE_L.pack(side=LEFT,fill=BOTH,expand=True)
+sottoframe_THREE_R.pack(side=LEFT,fill=BOTH,expand=True)
+
+##### def finali, encrypt per criptare e decryt appunto per decryptare il file ##########
+##### encrypt(_file,_directory) #####
+##### tramite 'rb' legge il contenuto binario del file selezionato, tramite b64encode e decode lo trasforma in un testo utf-8 che scriverà su un file con estensione .en1
+##### alla fine del file txt verrà scritta l'estensione originale, utile durante il decrypting
+def encrypt(_file,_directory):
+    txt_binario_from_jpg = open(_file, 'rb').read()
+    txt_utf8_decodificato = base64.b64encode(txt_binario_from_jpg).decode('utf-8')
+    #ulteriore encrypt qui???
+    open(str(_directory)+'/'+(name_ende(VAR_file_selezionato,VAR_directory_destinazione,'en')), 'w').write(txt_utf8_decodificato+'\n'+(_file.split('/')[-1]).split('.')[-1])
+    
+##### decrypt(_file,_directory) #####
+##### legge il file .en1 escludendo l'ultima riga in cui è riportata l'estensione originale [:-4], poi lo ricodifica tramite b64decode, e riscrive una copia del file originale non cryptato
+##### l'estensione originale del file viene ricavata nella funzione name_ende
+def decrypt(_file,_directory):
+    base64_encoded_str = open(_file, 'r').read()[:-4]
+    base64_decoded = base64.b64decode(base64_encoded_str)
+    nomefilefinale = name_ende(VAR_file_selezionato,VAR_directory_destinazione,'de')
+    percorsofinale = str(_directory)+'/'+str(nomefilefinale)
+    open(str(_directory)+'/'+str(nomefilefinale), 'wb').write(base64_decoded)
+    if valorebox2.get() == '1':
+        os.system(f'start "" "{percorsofinale}"')
+
+##### name_ende(_file, _directory, data_ende) #####
+##### splitta il nome del file e ne rimuove l'estensione
+##### verifica che il nome del file finale, con nuova estensione in caso di 'en' ed estensione di origine in caso di 'de', non sià già presente
+##### se dovesse esserlo (già esistente), tramite un counter creerà un nome alternativo
+##### in caso di file cryptato l'estensione di origine sarà già scritta al suo interno
+def name_ende(_file, _directory, data_ende):
+        if data_ende == 'en':
+            name = (_file.split('/')[-1]).split('.')[0]
+            name_en1 = name + '.en1'
+            counter = 0
+            while name_en1 in os.listdir(_directory):
+                counter += 1
+                testname =  name + str(counter)+'.en1'
+                if testname not in os.listdir(_directory):
+                    name_en1 = testname
+                else:
+                    name_en1 = testname
+                    continue
+            return name_en1
+
+        elif data_ende == 'de':
+            name = (_file.split('/')[-1]).split('.')[0]
+            name_extention = name + '.' + open(_file, 'r').read()[-3:]
+            counter = 0
+            while name_extention in os.listdir(_directory):
+                counter += 1
+                testname =  name + str(counter) +'.' + open(_file, 'r').read()[-3:]
+                if testname not in os.listdir(_directory):
+                    name_extention = testname
+                else:
+                    name_extention = testname
+                    continue
+            return name_extention
+
+##### radio_var_to_endetxt() #####
+##### funzione richiamata dai radio button, parametro presettato in 'en', cambia il testo di invio_ende e in base a questo la funzione ultima_ende() richiamerà encrypt() o decrypt()          
+def radio_var_to_endetxt():
+    abc = ende_var.get()
+    invio_ende.config(text = abc)
+
+    modulorisolutivomistico() ##### funzione essenziale, previene bug e verifica parametri essenziali al conseguimento del programma
+    
+##### ultima_ende() #####
+##### è il command di invio_ende, semplicemente in base al valore di ende_var.get richiamerà encrypt() o decrypt()
+def ultima_ende():
+    if ende_var.get()== 'en':
+        encrypt(VAR_file_selezionato,VAR_directory_destinazione)
+      
+    elif ende_var.get()=='de':
+        decrypt(VAR_file_selezionato,VAR_directory_destinazione)
+
+##### funzione_selezione_file() #####
+##### command del tasto BTTN_seleziona_file, apre la dialog box per la selezione del file, in base al parametro ende_var visualizza estensioni differenti nella finestra di selezione
+##### una volta selezionato il file inserisce il suo percorso all'interno della variabile VAR_file_selezionato
+##### con box "file folder as destination" precedentemente selezionata, verrà copiato il percorso del file in VAR_directory_destinazione
+def funzione_selezione_file(): 
+    global VAR_file_selezionato
+    global VAR_directory_destinazione
+    if ende_var.get()== 'en':
+        VAR_file_selezionato = filedialog.askopenfilename(initialdir="/gui/images",title='select the file to encrypt',filetypes=(("all files","*.*"),("image files","*.jpg"),("image files","*.jpeg"),("image files","*.png"),("image files","*.bmp")))
+        TXT_percorso_file.config(text = VAR_file_selezionato)
+        #(if VAR_directory_destinazione == '') inutile in questo aggiornamento dello script
+        #creato precedentemente quando si poteva selezionare la box "file folder as destination" all'apertura del programma, prima di selezionare il file
+        if VAR_directory_destinazione == '' or valorebox.get() == '1':          
+            VAR_directory_destinazione = '/'.join(VAR_file_selezionato.split('/')[:-1])
+            
+    else:
+        VAR_file_selezionato = filedialog.askopenfilename(initialdir="/gui/images",title='select the file to encrypt',filetypes=(("cypted files","*.en1"),("all files","*.*")))
+        TXT_percorso_file.config(text = VAR_file_selezionato)
+        if VAR_directory_destinazione == '' or valorebox.get() == '1':                                  
+            VAR_directory_destinazione = '/'.join(VAR_file_selezionato.split('/')[:-1])   
+        
+    modulorisolutivomistico() ##### funzione essenziale, previene bug e verifica parametri essenziali al conseguimento del programma
+
+##### funzione_selezione_directory_destinazione() #####ù
+##### command di BTTN_scegli_destinazione, apre una dialogbox per la selezione della cartella di destinazione e ricopia il percorso scelto in di VAR_directory_destinazione
+##### ricopierà il percorso anche in TXT_destinazione_file per renderlo visibile a diplay e infine nella variabile rememba_destinazione
+##### rememba_destinazione farà si che anche qualora VAR_directory_destinazione dovesse essere modificato dalla box attiva in valo(), la scelta fatta precedentemente qui in dialogbox resti in memoria
+def funzione_selezione_directory_destinazione():
+    global VAR_directory_destinazione
+    global rememba_destinazione
+    VAR_directory_destinazione = filedialog.askdirectory()
+    TXT_destinazione_file.config(text = VAR_directory_destinazione)
+    rememba_destinazione = VAR_directory_destinazione
+
+    modulorisolutivomistico() ##### funzione essenziale, previene bug e verifica parametri essenziali al conseguimento del programma
+              
+##### valo() ######
+##### command di box, strettamente collegata a funzione_selezione_directory_destinazione(), insieme determinano il percorso di destinazione del file in VAR_directory_destinazione
+##### determina valorebox, se '0' servirà necessariamente selezionare o aver precedentemente selezionato una directory di destinazione, se '1' prenderà quella del file selezionato
+##### per far si che selezionando e deselezionando la box non si "perda" il percorso preselezionato con funzione_selezione_directory_destinazione(), useremo rememba_destinazione
+##### il testo che ci mostra TXT_destinazione_file coincide con la variabile rememba_destinazione, ma viene aggiornato soltanto in funzione_selezione_directory_destinazione()
+##### quindi nonostante usi VAR_directory_destinazione per acquisire la stringa da mostrare, quando questa variabile viene aggiornata in valo, lui rimane col vecchio dato
+def valo():
+    global VAR_file_selezionato
+    global VAR_directory_destinazione
+    global rememba_destinazione
+    valoreboxlocal = valorebox.get()
+    if valoreboxlocal == '0':
+        VAR_directory_destinazione = rememba_destinazione
+    else:
+        VAR_directory_destinazione = '/'.join(VAR_file_selezionato.split('/')[:-1])
+
+    modulorisolutivomistico() ##### funzione essenziale, previene bug e verifica parametri essenziali al conseguimento del programma
+    
+##### modulorisolutivomistico() #####
+##### questa funzione si trova all'interno di molte altre funzioni e serve a disattivare la parte centrale e finale del programma nel caso i requisiti essenziali non venissero soddisfatti
+##### se nessun file è stato selezionato, o se l'estensione dello stesso non coincidesse con quella richiesta da 'en' o 'de', si disattiverà la parte centrale e di conseguenza finale del programma
+##### se siamo su 'en' verrà disattivata lo box2 (per aprire il file al termine della decodifica), e in base a valorebox '0' o '1' si attiveranno o meno BTTN_scegli_destinazione e TXT_destinazione_file
+##### antibug è la parte finale del modulo: per evitare che si attivi invio_ende senza aver portato valorebox a '1' nonostante in funzione_selezione_file() venga subito preimpostato un percorso
+def modulorisolutivomistico():
+    if VAR_file_selezionato == '' or ende_var.get() == 'en' and VAR_file_selezionato.split('/')[-1][-4:].lower() == '.en1' or ende_var.get() == 'de'  and VAR_file_selezionato.split('/')[-1][-4:].lower() != '.en1':
+        TXT_destinazione_file["state"]="disabled"
+        BTTN_scegli_destinazione["state"]="disabled"
+        box["state"]="disabled"
+        box2["state"]="disabled"
+        invio_ende["state"] = "disabled"
+    else:
+        if ende_var.get() == 'en':    
+            box2["state"]="disabled"  
+        else:   
+            box2["state"]="active"    
+        valoreboxlocal = valorebox.get()
+        box["state"]="active"
+        if valoreboxlocal == '0':
+            BTTN_scegli_destinazione["state"]="active"
+            TXT_destinazione_file["state"]="active"
+        else:
+            BTTN_scegli_destinazione["state"]="disabled"
+            TXT_destinazione_file["state"]="disabled"
+        #antibug
+        if VAR_file_selezionato != '' and valorebox.get() == '0' and rememba_destinazione == '': #creo una variabile che copia il txt e uso quella?
+            invio_ende["state"] = "disabled"
+        elif VAR_directory_destinazione == '' and valorebox.get() == '0':
+            invio_ende["state"] = "disabled"     
+        else:
+            invio_ende["state"] = "active"
+
+##### variabili preimpostate #####
+VAR_file_selezionato = ''
+VAR_directory_destinazione = ''
+rememba_destinazione= ''
+
+##### widget di tkinter e layout ####
+##### StringVar() presettate, così che le altre funzioni possano leggerle ancor prima che vengano richiamate dal widget di appartenenza
+valorebox = StringVar()
+valorebox.set('0')
+
+valorebox2 = StringVar()
+valorebox2.set('0')
+  
+ende_var = StringVar()
+ende_var.set('en')
+
+##### widget che verranno richiamati dal modulorisolutivomistico() e devono quindi trovarsi in alto nel codice per non creare errori ("nome_widget" non esiste)
+BTTN_scegli_destinazione = Button(sottoframe_THREE_L, text = 'Choose directory', command = funzione_selezione_directory_destinazione)
+
+box = Checkbutton(sottoframe_THREE_R, text='File folder as destination', command = valo, variable = valorebox)
+
+box2 = Checkbutton(sottoframe_THREE_R,text='Open after decrypting', variable = valorebox2)
+
+TXT_destinazione_file=Label(frame_FOUR, text=str(VAR_directory_destinazione))
+
+invio_ende = Button(frame_FIVE, command=ultima_ende,padx=30,pady=2)
+
+##### .pack #####
+radio_var_to_endetxt()
+r1 = ttk.Radiobutton(sottoframe_ONE_L, text='encode', value = 'en', variable=ende_var, command=radio_var_to_endetxt).pack()
+r2 = ttk.Radiobutton(sottoframe_ONE_L, text='decode', value = 'de', variable=ende_var, command=radio_var_to_endetxt).pack()
+
+testo_01 = Label(sottoframe_ONE_R, text = 'Select the file').pack()
+
+BTTN_seleziona_file = Button(sottoframe_ONE_R, text = 'Explore', command = funzione_selezione_file,padx=20,pady=1).pack()
+
+TXT_percorso_file = Label(frame_TWO, text = str(VAR_file_selezionato))
+TXT_percorso_file.pack()
+
+##### in commento: il widget riportato in alto perchè il codice funzioni
+##### BTTN_scegli_destinazione = Button(sottoframe_THREE_L, text = 'Choose directory', command = funzione_selezione_directory_destinazione)
+BTTN_scegli_destinazione.pack()
+
+##### box = Checkbutton(sottoframe_THREE_R, text='File folder as destination', command = valo, variable = valorebox)
+box.pack()
+
+##### box2 = Checkbutton(sottoframe_THREE_R,text='Open after decrypting', variable = valorebox2)
+box2.pack()
+
+##### TXT_destinazione_file=Label(frame_FOUR, text=str(VAR_directory_destinazione))
+TXT_destinazione_file.pack()
+
+##### invio_ende = Button(frame_FIVE, command=ultima_ende,padx=30,pady=2)
+invio_ende.pack()
+
+root_01.mainloop()
